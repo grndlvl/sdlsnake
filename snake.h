@@ -11,21 +11,27 @@ struct snakeSegment{
 
 class Snake {
   SDL_Surface* screen;
-  TTF_Font* font;
+  TTF_Font* font, *scoreFont;
   std::vector<snakeSegment> snake;
+  snakeSegment food;
 
-  int exitGame, backToMenu, width, height;
-  Uint32 time;
+  int exitGame, backToMenu, width, height, delay, score;
+  Uint32 time, snakeColor, backgroundColor;
+  char direction;
+  bool ate;
 
   public:
     Snake();
+    ~Snake();
     int showMenu();
     void flipScreen();
     void initSnake();
     void initArea();
+    void putFood();
+    bool collision();
     int start();
     void drawRect(int x, int y, Uint32 color, int w = 10, int h = 10);
-    void moveSnake();
+    int moveSnake();
     std::vector<snakeSegment> getSnake();
 };
 

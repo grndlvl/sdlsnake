@@ -8,9 +8,15 @@ Snake::Snake() {
   height = 400;
   int action = 0;
   backToMenu = 9;
+  delay = 110;
 
   screen = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
-  font = TTF_OpenFont("resources/kasnake.ttf", 30);
+  font = TTF_OpenFont("resources/kasnake.ttf", 60);
+  scoreFont = TTF_OpenFont("resources/kasnake.ttf", 20);
+
+
+  snakeColor = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
+  backgroundColor = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
 
   while (action != exitGame) {
     action = showMenu();
@@ -25,90 +31,166 @@ Snake::Snake() {
   }
 }
 
+Snake::~Snake() {
+  TTF_CloseFont(font);
+  TTF_Quit();
+  SDL_Quit();
+}
+
 int Snake::start() {
+  int action = 0;
+
+  direction = 'l';
+  ate = false;
+  score = 0;
+
   initArea();
   initSnake();
+
   while (true) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      switch (event.type) {
-        case SDL_QUIT:
-          return exitGame;
-        case SDL_KEYDOWN:
-          return backToMenu;
-      }
+    if (collision()) {
+      std::cout << "game over" << std::endl;
+      break;
     }
-    movesnake();
+
+    if ((action = moveSnake())) {
+      return action;
+    }
+
     flipScreen();
+    SDL_Delay(delay);
   }
+
+  return 0;
 }
 
 void Snake::initSnake() {
-  Uint32 color = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
+  snake.clear();
 
   for (int i = 0; i < 5; i++)
     snake.push_back(snakeSegment(40+i, 10));
 
-  for (int i = 0; i < snake.size(); i++)
-    drawRect(snake[i].x*10, snake[i].y*10, color);
+  for (int i = 0; i < (int) snake.size(); i++)
+    drawRect(snake[i].x*10, snake[i].y*10, snakeColor);
 }
 
-void Snake::moveSnake() {
+void Snake::putFood() {
+  while (true) {
+    int tmpx = rand()%width/10+1;
+    int tmpy = rand()%height/10+1;
+
+    for (int i = 0; i < (int) snake.size(); i++)
+      if (snake[i].x == tmpx && snake[i].y == tmpy)
+        continue;
+      if (tmpx >= width/10-2 || tmpy >= height/10/3)
+        continue;
+      food.x = tmpx;
+      food.y = tmpy;
+      break;
+  }
+
+  drawRect(food.x*10, food.y*10, SDL_MapRGB(screen->format, 0xff, 0x00, 0xff));
+}
+
+int Snake::moveSnake() {
   SDL_Event event;
+
   while(SDL_PollEvent(&event)) {
-    if(event.type==SDL_KEYDOWN) {
-      switch(event.key.keysym.sym) {
+    if (event.type == SDL_QUIT)
+      return exitGame;
+    if (event.type == SDL_KEYDOWN) {
+      switch (event.key.keysym.sym) {
         case SDLK_LEFT:
-          if(direction!='r')
-            direction='l';
+          if (direction != 'r')
+            direction = 'l';
             break;
         case SDLK_UP:
-          if(direction='d')
-            direction='u';
+          if (direction != 'd')
+            direction = 'u';
             break;
         case SDLK_DOWN:
-          if(direction!='u')
-            direction='d';
+          if (direction != 'u')
+            direction = 'd';
             break;
         case SDLK_RIGHT:
-          if(direction!='l')
-            direction='r';
+          if(direction != 'l')
+            direction = 'r';
           break;
         case SDLK_ESCAPE:
-          direction='q';
+          return backToMenu;
+          break;
+        default:
           break;
       }
     }
-    else if(event.type==SDL_QUIT)
-      direction='q';
   }
 
-  if(!get) {
-    drawRect(snake[snake.size()-1].x*10,snake[snake.size()-1].y*10,SDL_MapRGB(screen->format,0x00,0x00,0x00));
+  if (!ate) {
+    drawRect(snake[snake.size()-1].x*10, snake[snake.size()-1].y*10, backgroundColor);
     snake.pop_back();
   }
 
-  if(direction=='l')
-    snake.insert(snake.begin(),snakepart(snake[0].x-1,snake[0].y));
-  else if(direction=='r')
-    snake.insert(snake.begin(),snakepart(snake[0].x+1,snake[0].y));
-  else if(direction=='u')
-    snake.insert(snake.begin(),snakepart(snake[0].x,snake[0].y-1));
-  else if(direction=='d')
-    snake.insert(snake.begin(),snakepart(snake[0].x,snake[0].y+1));
+  if (direction == 'l')
+    snake.insert(snake.begin(), snakeSegment(snake[0].x-1, snake[0].y));
+  else if (direction == 'r')
+    snake.insert(snake.begin(), snakeSegment(snake[0].x+1, snake[0].y));
+  else if (direction == 'u')
+    snake.insert(snake.begin(), snakeSegment(snake[0].x, snake[0].y-1));
+  else if (direction == 'd')
+    snake.insert(snake.begin(), snakeSegment(snake[0].x, snake[0].y+1));
 
-  drawRect(snake[0].x*10,snake[0].y*10,SDL_MapRGB(screen->format,0x00,0xff,0x00));
+  drawRect(snake[0].x*10, snake[0].y*10, snakeColor);
+
+  return 0;
+}
+
+bool Snake::collision() {
+  if (snake[0].x == 0 || snake[0].x == width/10-1)
+    return true;
+  if (snake[0].y == 0 || snake[0].y == height/10-3)
+    return true;
+
+  for (int i = 2; i < (int) snake.size(); i++)
+    if (snake[0].x == snake[i].x && snake[i].y == snake[0].y)
+      return true;
+
+  if (snake[0].x == food.x && snake[0].y == food.y) {
+    ate = true;
+    score += 10;
+    char scoreString[5];
+
+    // Convert score to string for rendered points.
+    sprintf(scoreString, "%d", score);
+
+    SDL_Color color = {255, 255, 255};
+    SDL_Surface* scoreText = TTF_RenderText_Solid(scoreFont, scoreString, color);
+
+    SDL_Rect scoreContainer = {0, 380};
+    drawRect(0, 380, SDL_MapRGB(screen->format, 0x00, 0x00, 0x00), 100, 20);
+    SDL_BlitSurface(scoreText, NULL, screen, &scoreContainer);
+    SDL_FreeSurface(scoreText);
+    if ((score % 100) == 0 && delay > 0)
+      delay -= 10;
+
+    putFood();
+  }
+  else {
+    ate = false;
+  }
+
+  return false;
 }
 
 void Snake::initArea() {
-  SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0x00, 0x00, 0x00));
+  SDL_FillRect(screen, &screen->clip_rect, backgroundColor);
 
-  Uint32 color = SDL_MapRGB(screen->format,0xff,0x00,0x00);
+  Uint32 color = SDL_MapRGB(screen->format, 0xff, 0x00, 0x00);
   drawRect(0, 0, color, this->width, 10);
   drawRect(0, 0, color, 10, this->height-20);
   drawRect(0, height-30, color, this->width, 10);
   drawRect(width-10, 0, color, 10, this->height-20);
 
+  putFood();
 }
 
 void Snake::drawRect(int x, int y, Uint32 color, int w, int h) {
@@ -124,8 +206,8 @@ void Snake::flipScreen() {
   time = SDL_GetTicks();
 
   SDL_Flip(screen);
-  if(1000/30 > (SDL_GetTicks()-time))
-    SDL_Delay(1000/30 - (SDL_GetTicks()-time));
+  if(1000/150 > (SDL_GetTicks()-time))
+    SDL_Delay(1000/150 - (SDL_GetTicks()-time));
 }
 
 int Snake::showMenu() {
