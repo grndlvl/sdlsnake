@@ -15,7 +15,7 @@ class Snake {
   std::vector<snakeSegment> snake;
   snakeSegment food;
 
-  int exitGame, backToMenu, width, height, delay, score;
+  int exitGame, backToMenu, gameOver, width, height, delay, score;
   Uint32 time, snakeColor, backgroundColor;
   char direction;
   bool ate;
@@ -27,12 +27,13 @@ class Snake {
     void flipScreen();
     void initSnake();
     void initArea();
+    int showGameOver();
     void putFood();
     bool collision();
-    int start();
+    void start();
+    int startGame();
     void drawRect(int x, int y, Uint32 color, int w = 10, int h = 10);
     int moveSnake();
-    std::vector<snakeSegment> getSnake();
 };
 
 class SnakeMenuItem {
