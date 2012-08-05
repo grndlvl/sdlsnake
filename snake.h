@@ -1,5 +1,6 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
+#include <SDL/SDL_mixer.h>
 #include <iostream>
 #include <vector>
 
@@ -19,6 +20,9 @@ class Snake {
   Uint32 time, snakeColor, backgroundColor;
   char direction;
   bool ate;
+
+  Mix_Chunk* gulpEffect, *fasterEffect, *gameOverEffect;
+  Mix_Music* backgroundMusic;
 
   public:
     Snake();

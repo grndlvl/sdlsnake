@@ -16,9 +16,6 @@ Snake::Snake() {
   backToMenu = 9;
   gameOver = 8;
 
-  // The snake speed delay.(Decrements in game mode)
-  delay = 110;
-
   // SDL surface used throught game.
   screen = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
 
@@ -29,6 +26,13 @@ Snake::Snake() {
   // Reusable colors.
   snakeColor = SDL_MapRGB(screen->format, 0x00, 0xff, 0x00);
   backgroundColor = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
+
+  // Load sounds.
+  Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096);
+  backgroundMusic = Mix_LoadMUS("resources/music.wav");
+  gulpEffect = Mix_LoadWAV("resources/gulp.wav");
+  fasterEffect = Mix_LoadWAV("resources/faster.wav");
+  gameOverEffect = Mix_LoadWAV("resources/gameover.wav");
 }
 
 /**
@@ -38,6 +42,13 @@ Snake::~Snake() {
   // Close all fonts opened.
   TTF_CloseFont(font);
   TTF_CloseFont(scoreFont);
+
+
+  Mix_FreeMusic(backgroundMusic);
+  Mix_FreeChunk(gulpEffect);
+  Mix_FreeChunk(fasterEffect);
+  Mix_FreeChunk(gameOverEffect);
+  Mix_CloseAudio();
 
   // Quit SDL and TTF.
   SDL_Quit();
@@ -71,6 +82,9 @@ void Snake::start() {
  * Start a new game.
  */
 int Snake::startGame() {
+  // The snake speed delay.(Decrements in game mode)
+  delay = 110;
+
   // Action to determine which action should be taken next.
   int action = 0;
 
@@ -83,6 +97,8 @@ int Snake::startGame() {
   initArea();
   // Create the character.
   initSnake();
+  // Start the music.
+  Mix_PlayMusic(backgroundMusic, -1);
 
   // Secondary game loop to allow the player to play the game.
   while (true) {
@@ -99,6 +115,7 @@ int Snake::startGame() {
       return action;
     }
 
+
     // Redraw the screen.
     flipScreen();
     // Adjust the snakes speed per the current delay.
@@ -112,6 +129,10 @@ int Snake::startGame() {
  * Show the game over screen.
  */
 int Snake::showGameOver() {
+  // Play effect.
+  Mix_PlayChannel(-1, gameOverEffect, 0);
+
+  Mix_HaltMusic();
   SDL_Color color = {255, 0, 0};
   SDL_Surface* gameOverText = TTF_RenderText_Solid(font, "Game Over", color);
 
@@ -124,7 +145,7 @@ int Snake::showGameOver() {
   SDL_FreeSurface(gameOverText);
 
   flipScreen();
-  SDL_Delay(1200);
+  SDL_Delay(2800);
 
   return backToMenu;
 }
@@ -240,6 +261,9 @@ bool Snake::collision() {
 
   // Check if the snake collided with food.
   if (snake[0].x == food.x && snake[0].y == food.y) {
+    // Play effect.
+    Mix_PlayChannel(-1, gulpEffect, 0);
+
     // We need to tell other parts that we feed so that the snake will gain a
     // segment.
     ate = true;
@@ -268,8 +292,10 @@ bool Snake::collision() {
 
     // When the user scores 100 points decrease the delay to increase the snake's
     // speed.
-    if ((score % 100) == 0 && delay > 0)
+    if ((score % 100) == 0 && delay > 0) {
+      Mix_PlayChannel(-1, fasterEffect, 0);
       delay -= 10;
+    }
 
     // Add a new piece of food.
     putFood();
